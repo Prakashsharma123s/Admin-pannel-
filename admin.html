@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITPay Pro | MASTER SYSTEM CONTROLLER v3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { background-color: #030712; color: #f3f4f6; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.03); }
+        input { background: #0b0f19; border: 1px solid #1f2937; color: white; padding: 12px; border-radius: 12px; outline: none; width: 100%; transition: 0.2s; }
+        input:focus { border-color: #3b82f6; }
+        button { transition: all 0.2s ease-in-out; cursor: pointer; }
+        button:active { transform: scale(0.96); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
+        <div>
+            <h1 class="text-2xl font-extrabold text-blue-500 tracking-tight">BITPay Master Controller</h1>
+            <p class="text-slate-400 text-xs mt-0.5">Dynamic Engine & User Settlement Node Router</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel p-4.5 rounded-2xl shadow-sm"><p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Total Traders</p><h2 id="totalUsers" class="text-2xl font-black mt-1 text-white">0</h2></div>
+        <div class="glass-panel p-4.5 rounded-2xl shadow-sm"><p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Total INR Liquidity</p><h2 id="totalBalance" class="text-2xl font-black mt-1 text-white">₹0</h2></div>
+        <div class="glass-panel p-4.5 rounded-2xl shadow-sm"><p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Total USDT Vault</p><h2 id="totalUsdt" class="text-2xl font-black mt-1 text-white">0</h2></div>
+        <div class="glass-panel p-4.5 rounded-2xl shadow-sm"><p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Pending Orders</p><h2 id="pendingOrders" class="text-2xl font-black mt-1 text-amber-400">0</h2></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="lg:col-span-2 space-y-6">
+            
+            <div class="glass-panel p-5 rounded-3xl shadow-md border border-blue-500/10">
+                <h3 class="text-sm font-extrabold text-blue-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 shadow-md shadow-blue-500/50"></span> 📥 Pending USDT Orders & Withdrawals
+                </h3>
+                <div id="usdtOrdersQueue" class="space-y-3 max-h-[400px] overflow-y-auto no-scrollbar">
+                    <p class="text-xs text-slate-500 italic py-4 text-center">No active USDT request streams found.</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-5 rounded-3xl shadow-md">
+                <h3 class="text-sm font-extrabold text-emerald-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-md shadow-emerald-500/50"></span> 💰 Cash Deposit Requests (INR)
+                </h3>
+                <div id="depositTable" class="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+            </div>
+
+            <div class="glass-panel p-5 rounded-3xl shadow-md">
+                <h3 class="text-sm font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4">
+                    👥 Database Members
+                </h3>
+                <div id="userGridSystem" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="glass-panel p-6 rounded-3xl border border-blue-500/20">
+                <h3 class="text-sm font-black text-blue-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-chart-line"></i> Platform Conversion Rate</h3>
+                <input type="number" id="rateInput" placeholder="Enter updated rate standard, e.g. 92.50" class="mb-4">
+                <button onclick="updateRate()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider">Commit Rate Sync</button>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl border border-emerald-500/20">
+                <h3 class="text-sm font-black text-emerald-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-qrcode"></i> Gateway QR Code Link</h3>
+                <input type="text" id="qrLink" placeholder="Paste direct hosting asset link" class="mb-4">
+                <button onclick="updateQR()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider">Update QR Link</button>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl border border-purple-500/20">
+                <h3 class="text-sm font-black text-purple-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-user-gear"></i> Target Balance Overrides</h3>
+                <div class="space-y-4">
+                    <input type="text" id="targetPhone" placeholder="Select item down below" readonly class="opacity-60 cursor-not-allowed">
+                    <input type="number" id="newBalance" placeholder="Set fiat INR amount">
+                    <button onclick="updateBalance()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase">Overwrite INR</button>
+                    <input type="number" id="newUsdt" placeholder="Set token balance" class="mt-2">
+                    <button onclick="updateUsdtOnly()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase">Overwrite USDT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRocodkDhKanc-9hTI2xpzfihlh29udio",
+            authDomain: "trusted-usdt-seller.firebaseapp.com",
+            projectId: "trusted-usdt-seller",
+            storageBucket: "trusted-usdt-seller.firebasestorage.app",
+            messagingSenderId: "667426874776",
+            appId: "1:667426874776:web:2c058a8b06a985e390b7ed"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function loadDataPipeline() {
+            // Live Users Metrics Mapping
+            db.collection("users").onSnapshot(snapshot => {
+                const uTable = document.getElementById('userGridSystem');
+                uTable.innerHTML = "";
+                let totalUsers = 0, totalBalance = 0, totalUsdt = 0;
+
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const phone = doc.id;
+                    totalUsers++;
+                    totalBalance += user.balance || 0;
+                    totalUsdt += user.usdt || 0;
+
+                    uTable.innerHTML += `
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                        <div>
+                            <p class="font-extrabold text-sm text-slate-200 truncate">${user.name || 'BITPay Trader'}</p>
+                            <p class="text-[10px] font-mono text-slate-500">${phone}</p>
+                            <div class="mt-2 text-xs">
+                                <p class="text-slate-400">INR: <b class="text-emerald-400">₹${(user.balance || 0).toLocaleString()}</b></p>
+                                <p class="text-slate-400">USDT: <b class="text-sky-400">${user.usdt || 0} USDT</b></p>
+                            </div>
+                        </div>
+                        <button onclick="selectUserRef('${phone}', ${user.balance || 0}, ${user.usdt || 0})" class="w-full bg-slate-800 text-sky-400 font-bold text-[10px] py-1.5 rounded-md mt-2.5 border border-sky-500/5">Manage</button>
+                    </div>`;
+                });
+                document.getElementById("totalUsers").innerText = totalUsers;
+                document.getElementById("totalBalance").innerText = "₹" + totalBalance.toLocaleString();
+                document.getElementById("totalUsdt").innerText = totalUsdt;
+            });
+
+            // REALTIME USDT ORDER AND WITHDRAWAL VERIFIER
+            db.collection("usdt_orders").where("status", "==", "Processing").onSnapshot(snapshot => {
+                const usdtQueue = document.getElementById("usdtOrdersQueue");
+                usdtQueue.innerHTML = "";
+                let totalPending = snapshot.size;
+
+                if(snapshot.empty) {
+                    usdtQueue.innerHTML = `<p class="text-xs text-slate-500 italic py-4 text-center">No active requests found.</p>`;
+                }
+
+                snapshot.forEach(doc => {
+                    const order = doc.data();
+                    const orderId = doc.id;
+                    const isWithdrawal = order.type === "Withdrawal";
+
+                    db.collection("users").doc(order.phone).get().then(uDoc => {
+                        const userName = uDoc.exists ? (uDoc.data().name || "VIP User") : "Unknown";
+                        const targetBox = document.getElementById(`nameBox-${orderId}`);
+                        if(targetBox) targetBox.innerText = "Name: " + userName;
+                    });
+
+                    // 🛠️ DYNAMIC ADDRESS FIX: Displays Wallet address or Proof depending on request type
+                    let addressOrProofLabel = isWithdrawal ? "Withdraw Wallet Address" : "UTR Number";
+                    let addressOrProofValue = isWithdrawal ? order.proof : order.utr;
+
+                    usdtQueue.innerHTML += `
+                    <div class="bg-slate-900/80 p-4 rounded-xl border ${isWithdrawal ? 'border-purple-500/20' : 'border-blue-500/10'} space-y-3 shadow-inner">
+                        <div class="flex justify-between items-start border-b border-slate-800 pb-2">
+                            <div>
+                                <h4 id="nameBox-${orderId}" class="font-extrabold text-xs text-slate-200">Name: Fetching...</h4>
+                                <p class="text-[10px] font-mono text-slate-400 mt-0.5">Phone: ${order.phone}</p>
+                                <p class="text-[9px] font-mono text-slate-500">TXN ID: ${order.txnId}</p>
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${isWithdrawal ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} mt-1 inline-block uppercase">
+                                    ${order.type || 'Buy Order'}
+                                </span>
+                            </div>
+                            <span class="text-xs font-black ${isWithdrawal ? 'text-purple-400 bg-purple-500/5' : 'text-blue-400 bg-blue-500/5'} border border-slate-700/30 px-2.5 py-1 rounded-md">
+                                ${order.usdtAmount} USDT
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-400 space-y-0.5 font-medium">
+                            <p>Estimated Fiat: <b class="text-white">₹${order.inrAmount}</b></p>
+                            <p>${addressOrProofLabel}: <b class="text-emerald-400 font-mono select-all break-all">${addressOrProofValue}</b></p>
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="settleUsdtOrder('${orderId}', '${order.phone}', ${order.usdtAmount}, 'Success', '${order.type || 'Buy'}')" class="w-1/2 bg-green-600 hover:bg-green-500 text-white font-bold text-xs py-2 rounded-lg tracking-wider uppercase">Approve</button>
+                            <button onclick="settleUsdtOrder('${orderId}', '${order.phone}', ${order.usdtAmount}, 'Failed', '${order.type || 'Buy'}')" class="w-1/2 bg-red-600 hover:bg-red-50 text-white font-bold text-xs py-2 rounded-lg tracking-wider uppercase">Failed</button>
+                        </div>
+                    </div>`;
+                });
+                
+                db.collection("payments").where("status", "==", "Pending").onSnapshot(pSnap => {
+                    document.getElementById("pendingOrders").innerText = totalPending + pSnap.size;
+                });
+            });
+
+            // Old payments cash loads framework listener
+            db.collection("payments").onSnapshot(snapshot => {
+                const dTable = document.getElementById('depositTable');
+                dTable.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if(data.status === "Pending") {
+                        dTable.innerHTML += `
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-emerald-500/10 flex justify-between items-center shadow-inner">
+                            <div>
+                                <p class="font-bold text-xs text-slate-300">Phone: ${data.phone}</p>
+                                <p class="mt-1 text-green-400 font-black text-base">₹${data.amount}</p>
+                                <p class="text-[10px] text-slate-500">UTR: ${data.utr}</p>
+                            </div>
+                            <button onclick="approvePayment('${doc.id}', '${data.phone}', ${data.amount})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg">Approve</button>
+                        </div>`;
+                    }
+                });
+            });
+        }
+
+        async function settleUsdtOrder(orderId, phone, usdtAmount, targetStatus, orderType) {
+            if(!confirm(`Mark this order token execution as [${targetStatus.toUpperCase()}]?`)) return;
+            
+            try {
+                // 1. Update master document logs state parameters
+                await db.collection("usdt_orders").doc(orderId).update({ status: targetStatus });
+
+                // 2. Loop into user records to change state inside dynamic arrays
+                const userRef = db.collection("users").doc(phone);
+                const userSnap = await userRef.get();
+                
+                if(userSnap.exists) {
+                    const data = userSnap.data();
+                    let updatedHistory = [...data.history];
+
+                    for(let i = 0; i < updatedHistory.length; i++) {
+                        if(updatedHistory[i].txnId === orderId) {
+                            updatedHistory[i].status = targetStatus;
+                            break;
+                        }
+                    }
+
+                    let updatePayload = { history: updatedHistory };
+                    
+                    // Logic modifications corresponding to type parameters balances
+                    if(orderType === "Withdrawal") {
+                        // For withdrawal, if it fails, refund the cut asset back to the balance
+                        if(targetStatus === "Failed") {
+                            updatePayload.usdt = (data.usdt || 0) + parseFloat(usdtAmount);
+                        }
+                    } else {
+                        // For purchases, if it succeeds, add the crypto directly to vault
+                        if(targetStatus === "Success") {
+                            updatePayload.usdt = (data.usdt || 0) + parseFloat(usdtAmount);
+                        }
+                    }
+
+                    await userRef.update(updatePayload);
+                }
+                alert(`Order Settle Operation Complete: ${targetStatus} ✅`);
+            } catch(e) {
+                alert("Execution routing error: " + e.message);
+            }
+        }
+
+        async function approvePayment(docId, phone, amount) {
+            try {
+                await db.collection("payments").doc(docId).update({ status: "Approved" });
+                const uRef = db.collection("users").doc(phone);
+                const uSnap = await uRef.get();
+                if(uSnap.exists) {
+                    const uData = uSnap.data();
+                    let hArr = uData.history ? [...uData.history] : [];
+                    for(let i = hArr.length - 1; i >= 0; i--) {
+                        if(hArr[i].type === "deposit" && hArr[i].status === "Pending") { hArr[i].status = "Success"; break; }
+                    }
+                    await uRef.update({ balance: (uData.balance || 0) + amount, history: hArr });
+                }
+                alert("Deposit Authorization Completed! ✅");
+            } catch(e) { alert("Processing failure trace: " + e.message); }
+        }
+
+        async function updateBalance() {
+            const phone = document.getElementById("targetPhone").value;
+            const amount = parseFloat(document.getElementById("newBalance").value);
+            if(!phone || isNaN(amount)) return alert("Declaration parameter error!");
+            await db.collection("users").doc(phone).update({ balance: amount });
+            alert("INR stack updated! ✅");
+        }
+
+        async function updateUsdtOnly() {
+            const phone = document.getElementById("targetPhone").value;
+            const usdtVal = parseFloat(document.getElementById("newUsdt").value);
+            if(!phone || isNaN(usdtVal)) return alert("USDT parameters parsing error!");
+            await db.collection("users").doc(phone).update({ usdt: usdtVal });
+            alert("USDT cache storage modified! ✅");
+        }
+
+        async function updateRate() {
+            const rate = parseFloat(document.getElementById("rateInput").value);
+            if(!rate || isNaN(rate)) return alert("Numerical standard required!");
+            await db.collection("settings").doc("payment").set({ rate: rate }, { merge: true });
+            alert("Conversion System Matrix Node Updated Live! ✅");
+            document.getElementById("rateInput").value = "";
+        }
+
+        async function updateQR() {
+            const link = document.getElementById("qrLink").value.trim();
+            if(!link) return alert("String asset locator URL required!");
+            await db.collection("settings").doc("payment").set({ qr: link }, { merge: true });
+            alert("Payment gateway pointer code sync completed! ✅");
+            document.getElementById("qrLink").value = "";
+        }
+
+        function selectUserRef(phone, inr, usdt) {
+            document.getElementById("targetPhone").value = phone;
+            document.getElementById("newBalance").value = inr;
+            document.getElementById("newUsdt").value = usdt;
+        }
+
+        window.onload = loadDataPipeline;
+    </script>
+</body>
+</html>
